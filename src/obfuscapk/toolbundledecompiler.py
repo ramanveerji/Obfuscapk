@@ -105,9 +105,10 @@ class BundleDecompiler(object):
             "-jar",
             self.bundledecompiler_path,
             "d",
-            "--in=" + aab_path,
-            "--out=" + output_dir_path,
+            f"--in={aab_path}",
+            f"--out={output_dir_path}",
         ]
+
 
         if force:
             self.logger.warning("Bundle Decompiler does not support force")
@@ -169,9 +170,10 @@ class BundleDecompiler(object):
             "-jar",
             self.bundledecompiler_path,
             "b",
-            "--in=" + source_dir_path,
-            "--out=" + output_aab_path,
+            f"--in={source_dir_path}",
+            f"--out={output_aab_path}",
         ]
+
 
         try:
             self.logger.info('Running build command "{0}"'.format(" ".join(build_cmd)))
@@ -254,9 +256,10 @@ class AABSigner(object):
             "-jar",
             self.aabsigner_path,
             "sign-bundle",
-            "--in=" + aab_path,
+            f"--in={aab_path}",
             "--out=" + aab_path.replace(".aab", "_signed.aab"),
         ]
+
 
         try:
             self.logger.info('Running sign command "{0}"'.format(" ".join(sign_cmd)))

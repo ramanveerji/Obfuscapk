@@ -37,7 +37,7 @@ class CallIndirection(obfuscator_category.ICodeObfuscator):
         return invoke_return == "V"
 
     def is_wide(self, invoke_return: str) -> bool:
-        return invoke_return == "J" or invoke_return == "D"
+        return invoke_return in {"J", "D"}
 
     def is_object(self, invoke_return: str) -> bool:
         # https://github.com/JesusFreke/smali/wiki/TypesMethodsAndFields
@@ -130,7 +130,7 @@ class CallIndirection(obfuscator_category.ICodeObfuscator):
         if is_range_invocation:
             new_method.write("p0 .. p{count}".format(count=(register_count - 1)))
         else:
-            for index in range(0, register_count):
+            for index in range(register_count):
                 new_method.write("p{count}".format(count=index))
                 if index + 1 < register_count:
                     new_method.write(", ")
@@ -156,14 +156,12 @@ class CallIndirection(obfuscator_category.ICodeObfuscator):
             for line in in_file:
 
                 if not class_name:
-                    class_match = util.class_pattern.match(line)
-                    if class_match:
+                    if class_match := util.class_pattern.match(line):
                         class_name = class_match.group("class_name")
                         out_file.write(line)
                         continue
 
-                invoke_match = util.invoke_pattern.match(line)
-                if invoke_match:
+                if invoke_match := util.invoke_pattern.match(line):
                     if not self.is_init(invoke_match.group("invoke_method")):
                         # The following function will write into the file the new
                         # method invocation.
@@ -208,16 +206,15 @@ class CallIndirection(obfuscator_category.ICodeObfuscator):
             self.logger.debug(
                 'Inserting call indirections in file "{0}"'.format(smali_file)
             )
-            if added_methods < max_methods_to_add:
-                with StringIO() as new_method:
-                    self.update_method(smali_file, new_method)
-                    self.add_method(smali_file, new_method)
-                    added_methods += self.get_declared_method_number_in_text(
-                        new_method.getvalue()
-                    )
-            else:
+            if added_methods >= max_methods_to_add:
                 break
 
+            with StringIO() as new_method:
+                self.update_method(smali_file, new_method)
+                self.add_method(smali_file, new_method)
+                added_methods += self.get_declared_method_number_in_text(
+                    new_method.getvalue()
+                )
         self.logger.debug("{0} new methods were added".format(added_methods))
 
     def obfuscate(self, obfuscation_info: Obfuscation):

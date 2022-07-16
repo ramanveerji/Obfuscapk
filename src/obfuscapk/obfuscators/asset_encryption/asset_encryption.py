@@ -75,11 +75,10 @@ class AssetEncryption(obfuscator_category.IEncryptionObfuscator):
                     asset_index_for_asset_names: List[int] = []
 
                     for line_number, line in enumerate(lines):
-                        invoke_match = open_asset_invoke_pattern.match(line)
-                        if invoke_match:
+                        if invoke_match := open_asset_invoke_pattern.match(line):
                             # Asset file open instruction.
                             asset_index.append(line_number)
-                            asset_register.append(invoke_match.group("param_register"))
+                            asset_register.append(invoke_match["param_register"])
 
                     # Iterate the lines backwards (until the method declaration is
                     # reached) and for each asset file open instruction find the

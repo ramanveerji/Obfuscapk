@@ -82,11 +82,8 @@ class Reorder(obfuscator_category.ICodeObfuscator):
                             inside_try_catch = False
 
                         elif editing_method:
-                            # Inside method. Check if this line contains an op code at
-                            # the beginning of the string.
-                            match = op_code_pattern.match(line)
-                            if match:
-                                op_code = match.group("op_code")
+                            if match := op_code_pattern.match(line):
+                                op_code = match["op_code"]
 
                                 # Check if we are entering or leaving a try-catch
                                 # block of code.
@@ -97,10 +94,6 @@ class Reorder(obfuscator_category.ICodeObfuscator):
                                     out_file.write(line)
                                     inside_try_catch = False
 
-                                # If this is a valid op code, and we are not inside a
-                                # try-catch block, mark this section with a special
-                                # label that will be used later and invert the if
-                                # conditions (if any).
                                 elif op_code in op_codes and not inside_try_catch:
                                     jump_name = util.get_random_string(16)
                                     out_file.write(
@@ -117,23 +110,23 @@ class Reorder(obfuscator_category.ICodeObfuscator):
                                     )
                                     jump_count += 1
 
-                                    new_if = self.if_mapping.get(op_code, None)
-                                    if new_if:
+                                    if new_if := self.if_mapping.get(
+                                        op_code, None
+                                    ):
                                         if_match = if_pattern.match(line)
                                         random_label_name = util.get_random_string(16)
                                         out_file.write(
-                                            "\t{if_cond} {register}, "
-                                            ":gl_{new_label}\n\n".format(
-                                                if_cond=new_if,
-                                                register=if_match.group("register"),
-                                                new_label=random_label_name,
+                                            (
+                                                "\t{if_cond} {register}, "
+                                                ":gl_{new_label}\n\n".format(
+                                                    if_cond=new_if,
+                                                    register=if_match["register"],
+                                                    new_label=random_label_name,
+                                                )
                                             )
                                         )
-                                        out_file.write(
-                                            "\tgoto/32 :{0}\n\n".format(
-                                                if_match.group("goto_label")
-                                            )
-                                        )
+
+                                        out_file.write("\tgoto/32 :{0}\n\n".format(if_match["goto_label"]))
                                         out_file.write(
                                             "\t:gl_{0}".format(random_label_name)
                                         )
@@ -182,11 +175,10 @@ class Reorder(obfuscator_category.ICodeObfuscator):
                                 block_count += 1
                                 current_code_block = CodeBlock(block_count, "")
                                 code_blocks.append(current_code_block)
+                            elif block_count > 0 and current_code_block:
+                                current_code_block.add_smali_code_to_block(line)
                             else:
-                                if block_count > 0 and current_code_block:
-                                    current_code_block.add_smali_code_to_block(line)
-                                else:
-                                    out_file.write(line)
+                                out_file.write(line)
 
                         else:
                             out_file.write(line)

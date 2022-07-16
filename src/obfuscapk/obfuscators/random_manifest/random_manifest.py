@@ -21,16 +21,15 @@ class RandomManifest(obfuscator_category.IResourcesObfuscator):
         indentation = "\n" + level * "    "
         if len(element):
             if not element.text or not element.text.strip():
-                element.text = indentation + "    "
+                element.text = f"{indentation}    "
             if not element.tail or not element.tail.strip():
                 element.tail = indentation
             for element in element:
                 self.indent_xml(element, level + 1)
             if not element.tail or not element.tail.strip():
                 element.tail = indentation
-        else:
-            if level and (not element.tail or not element.tail.strip()):
-                element.tail = indentation
+        elif level and (not element.tail or not element.tail.strip()):
+            element.tail = indentation
 
     # https://stackoverflow.com/a/27550126/5268548
     def xml_elements_equal(self, one: Element, other: Element) -> bool:
@@ -79,11 +78,7 @@ class RandomManifest(obfuscator_category.IResourcesObfuscator):
             root.remove(element_to_remove)
 
     def scramble_xml_element(self, element: Element):
-        children = []
-
-        # Get the children of the current element.
-        for child in element:
-            children.append(child)
+        children = list(element)
 
         # Remove the children from the current element (they will be added later
         # in a different order).

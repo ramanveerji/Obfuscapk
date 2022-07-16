@@ -47,11 +47,7 @@ class Obfuscation(object):
         self.key_password: str = key_password
         self.ignore_packages_file: str = ignore_packages_file
         self.use_aapt2 = use_aapt2
-        if apk_path.endswith("aab"):
-            self.is_bundle = True
-        else:
-            self.is_bundle = False
-
+        self.is_bundle = bool(apk_path.endswith("aab"))
         # Random string (32 chars long) generation with ASCII letters and digits
         self.encryption_secret = "".join(
             secrets.choice(string.ascii_letters + string.digits) for _ in range(32)
@@ -167,14 +163,11 @@ class Obfuscation(object):
                     for line in current_file:
 
                         if not class_name:
-                            class_match = util.class_pattern.match(line)
-                            if class_match:
+                            if class_match := util.class_pattern.match(line):
                                 class_name = class_match.group("class_name")
                                 continue
 
-                        # Field declared in class.
-                        field_match = util.field_pattern.match(line)
-                        if field_match:
+                        if field_match := util.field_pattern.match(line):
                             field = "{class_name}->{field_name}:{field_type}".format(
                                 class_name=class_name,
                                 field_name=field_match.group("field_name"),
@@ -182,9 +175,9 @@ class Obfuscation(object):
                             )
                             total_fields.add(field)
 
-                        # Field usage.
-                        field_usage_match = util.field_usage_pattern.match(line)
-                        if field_usage_match:
+                        if field_usage_match := util.field_usage_pattern.match(
+                            line
+                        ):
                             field = "{class_name}->{field_name}:{field_type}".format(
                                 class_name=field_usage_match.group("field_object"),
                                 field_name=field_usage_match.group("field_name"),
@@ -194,10 +187,7 @@ class Obfuscation(object):
 
             return_list.append(len(total_fields))
 
-        if self._is_multidex:
-            return return_list
-        else:
-            return return_list[0]
+        return return_list if self._is_multidex else return_list[0]
 
     def _get_total_methods(self) -> Union[int, List[int]]:
 
@@ -228,16 +218,13 @@ class Obfuscation(object):
                     for line in current_file:
 
                         if not class_name:
-                            class_match = util.class_pattern.match(line)
-                            if class_match:
+                            if class_match := util.class_pattern.match(line):
                                 class_name = class_match.group("class_name")
                                 continue
 
-                        # Method used in annotation.
-                        annotation_method_match = util.annotation_method_pattern.match(
+                        if annotation_method_match := util.annotation_method_pattern.match(
                             line
-                        )
-                        if annotation_method_match:
+                        ):
                             method = (
                                 "{class_name}->"
                                 "{method_name}({method_param}){method_return}".format(
@@ -257,9 +244,7 @@ class Obfuscation(object):
                             )
                             total_methods.add(method)
 
-                        # Method declared in class.
-                        method_match = util.method_pattern.match(line)
-                        if method_match:
+                        if method_match := util.method_pattern.match(line):
                             method = (
                                 "{class_name}->"
                                 "{method_name}({method_param}){method_return}".format(
@@ -271,9 +256,7 @@ class Obfuscation(object):
                             )
                             total_methods.add(method)
 
-                        # Method invocation.
-                        invoke_match = util.invoke_pattern.match(line)
-                        if invoke_match:
+                        if invoke_match := util.invoke_pattern.match(line):
                             method = (
                                 "{class_name}->"
                                 "{method_name}({method_param}){method_return}".format(
@@ -287,10 +270,7 @@ class Obfuscation(object):
 
             return_list.append(len(total_methods))
 
-        if self._is_multidex:
-            return return_list
-        else:
-            return return_list[0]
+        return return_list if self._is_multidex else return_list[0]
 
     def _get_remaining_fields(self) -> Union[int, List[int]]:
 
@@ -303,17 +283,11 @@ class Obfuscation(object):
 
         total_fields = self._get_total_fields()
 
-        # If this is a multidex application, return a list with the number of remaining
-        # available fields for each dex, otherwise just return the number of remaining
-        # available fields for the application.
-
-        # There is a 64K field limit for dex files.
-        if self._is_multidex:
-            remaining_fields = [64000 - dex_fields for dex_fields in total_fields]
-        else:
-            remaining_fields = 64000 - total_fields
-
-        return remaining_fields
+        return (
+            [64000 - dex_fields for dex_fields in total_fields]
+            if self._is_multidex
+            else 64000 - total_fields
+        )
 
     def _get_remaining_methods(self) -> Union[int, List[int]]:
 
@@ -326,156 +300,147 @@ class Obfuscation(object):
 
         total_methods = self._get_total_methods()
 
-        # If this is a multidex application, return a list with the number of remaining
-        # available methods for each dex, otherwise just return the number of remaining
-        # available methods for the application.
-
-        # There is a 64K method limit for dex files.
-        if self._is_multidex:
-            remaining_methods = [64000 - dex_methods for dex_methods in total_methods]
-        else:
-            remaining_methods = 64000 - total_methods
-
-        return remaining_methods
+        return (
+            [64000 - dex_methods for dex_methods in total_methods]
+            if self._is_multidex
+            else 64000 - total_methods
+        )
 
     def decode_apk(self) -> None:
 
-        if not self._is_decoded:
+        if self._is_decoded:
+            return
+        # The input apk will be decoded with apktool or BundleDecompiler.
+        apktool: Apktool = Apktool()
+        bundledecompiler: BundleDecompiler = BundleDecompiler()
 
-            # The input apk will be decoded with apktool or BundleDecompiler.
-            apktool: Apktool = Apktool()
-            bundledecompiler: BundleDecompiler = BundleDecompiler()
+        # <working_directory>/<apk_path>/
+        self._decoded_apk_path = os.path.join(
+            self.working_dir_path,
+            os.path.splitext(os.path.basename(self.apk_path))[0],
+        )
+        try:
+            if self.is_bundle:
+                bundledecompiler.decode(
+                    self.apk_path, self._decoded_apk_path, force=False
+                )
+            else:
+                apktool.decode(self.apk_path, self._decoded_apk_path, force=True)
 
-            # <working_directory>/<apk_path>/
-            self._decoded_apk_path = os.path.join(
-                self.working_dir_path,
-                os.path.splitext(os.path.basename(self.apk_path))[0],
-            )
-            try:
-                if self.is_bundle:
-                    bundledecompiler.decode(
-                        self.apk_path, self._decoded_apk_path, force=False
+            # Path to the decoded manifest file.
+            if self.is_bundle:
+                self._manifest_file = os.path.join(
+                    self._decoded_apk_path,
+                    "base",
+                    "manifest",
+                    "AndroidManifest.xml",
+                )
+            else:
+                self._manifest_file = os.path.join(
+                    self._decoded_apk_path, "AndroidManifest.xml"
+                )
+
+            # A list containing the paths to all the smali files obtained with
+            # apktool or bundledecompiler.
+            self._smali_files = [
+                os.path.join(root, file_name)
+                for root, dir_names, file_names in os.walk(self._decoded_apk_path)
+                for file_name in file_names
+                if file_name.endswith(".smali")
+            ]
+
+            if self.ignore_libs:
+                # Normalize paths for the current OS ('.join(x, "")' is used to add
+                # a trailing slash).
+                libs_to_ignore = list(
+                    map(
+                        lambda x: os.path.join(os.path.normpath(x), ""),
+                        util.get_libs_to_ignore(),
                     )
-                else:
-                    apktool.decode(self.apk_path, self._decoded_apk_path, force=True)
+                )
+                filtered_smali_files = []
 
-                # Path to the decoded manifest file.
-                if self.is_bundle:
-                    self._manifest_file = os.path.join(
-                        self._decoded_apk_path,
-                        "base",
-                        "manifest",
-                        "AndroidManifest.xml",
-                    )
-                else:
-                    self._manifest_file = os.path.join(
-                        self._decoded_apk_path, "AndroidManifest.xml"
-                    )
-
-                # A list containing the paths to all the smali files obtained with
-                # apktool or bundledecompiler.
-                self._smali_files = [
-                    os.path.join(root, file_name)
-                    for root, dir_names, file_names in os.walk(self._decoded_apk_path)
-                    for file_name in file_names
-                    if file_name.endswith(".smali")
-                ]
-
-                if self.ignore_libs:
-                    # Normalize paths for the current OS ('.join(x, "")' is used to add
-                    # a trailing slash).
-                    libs_to_ignore = list(
-                        map(
-                            lambda x: os.path.join(os.path.normpath(x), ""),
-                            util.get_libs_to_ignore(),
+                for smali_file in self._smali_files:
+                    # Get the path without the initial part <root>/smali/.
+                    relative_smali_file = os.path.join(
+                        *(
+                            os.path.relpath(
+                                smali_file, self._decoded_apk_path
+                            ).split(os.path.sep)[1:]
                         )
                     )
-                    filtered_smali_files = []
+                    # Get only the smali files that are not part of known third
+                    # party libraries.
+                    if not any(
+                        relative_smali_file.startswith(lib)
+                        for lib in libs_to_ignore
+                    ):
+                        filtered_smali_files.append(smali_file)
 
-                    for smali_file in self._smali_files:
-                        # Get the path without the initial part <root>/smali/.
-                        relative_smali_file = os.path.join(
-                            *(
-                                os.path.relpath(
-                                    smali_file, self._decoded_apk_path
-                                ).split(os.path.sep)[1:]
-                            )
-                        )
-                        # Get only the smali files that are not part of known third
-                        # party libraries.
-                        if not any(
-                            relative_smali_file.startswith(lib)
-                            for lib in libs_to_ignore
-                        ):
-                            filtered_smali_files.append(smali_file)
+                self._smali_files = filtered_smali_files
 
-                    self._smali_files = filtered_smali_files
-
-                # Sort the list of smali files to always have the list in the same
-                # order.
-                self._smali_files.sort()
+            # Sort the list of smali files to always have the list in the same
+            # order.
+            self._smali_files.sort()
 
                 # Check if multidex.
-                if self.is_bundle:
-                    if os.path.isdir(
-                        os.path.join(
-                            self._decoded_apk_path, "base", "dex", "smali_classes2"
-                        )
-                    ):
-                        self._is_multidex = True
-                else:
-                    if os.path.isdir(
+            if self.is_bundle:
+                if os.path.isdir(
+                    os.path.join(
+                        self._decoded_apk_path, "base", "dex", "smali_classes2"
+                    )
+                ):
+                    self._is_multidex = True
+            elif os.path.isdir(
                         os.path.join(self._decoded_apk_path, "smali_classes2")
                     ):
-                        self._is_multidex = True
+                self._is_multidex = True
 
-                if self._is_multidex:
-                    smali_directories = ["smali"]
-                    for i in range(2, 15):
-                        smali_directories.append("smali_classes{0}".format(i))
+            if self._is_multidex:
+                smali_directories = ["smali"]
+                smali_directories.extend("smali_classes{0}".format(i) for i in range(2, 15))
+                for smali_directory in smali_directories:
+                    if self.is_bundle:
+                        current_directory = os.path.join(
+                            self._decoded_apk_path,
+                            "base",
+                            "dex",
+                            smali_directory,
+                            "",
+                        )
+                    else:
+                        current_directory = os.path.join(
+                            self._decoded_apk_path, smali_directory, ""
+                        )
+                    if os.path.isdir(current_directory):
+                        self._multidex_smali_files.append(
+                            [
+                                smali_file
+                                for smali_file in self._smali_files
+                                if smali_file.startswith(current_directory)
+                            ]
+                        )
 
-                    for smali_directory in smali_directories:
-                        if self.is_bundle:
-                            current_directory = os.path.join(
-                                self._decoded_apk_path,
-                                "base",
-                                "dex",
-                                smali_directory,
-                                "",
-                            )
-                        else:
-                            current_directory = os.path.join(
-                                self._decoded_apk_path, smali_directory, ""
-                            )
-                        if os.path.isdir(current_directory):
-                            self._multidex_smali_files.append(
-                                [
-                                    smali_file
-                                    for smali_file in self._smali_files
-                                    if smali_file.startswith(current_directory)
-                                ]
-                            )
+            # A list containing the paths to the native libraries included in the
+            # application.
+            self._native_lib_files = [
+                os.path.join(root, file_name)
+                for root, dir_names, file_names in os.walk(
+                    os.path.join(self._decoded_apk_path, "lib")
+                )
+                for file_name in file_names
+                if file_name.endswith(".so")
+            ]
 
-                # A list containing the paths to the native libraries included in the
-                # application.
-                self._native_lib_files = [
-                    os.path.join(root, file_name)
-                    for root, dir_names, file_names in os.walk(
-                        os.path.join(self._decoded_apk_path, "lib")
-                    )
-                    for file_name in file_names
-                    if file_name.endswith(".so")
-                ]
+            # Sort the list of native libraries to always have the list in the
+            # same order.
+            self._native_lib_files.sort()
 
-                # Sort the list of native libraries to always have the list in the
-                # same order.
-                self._native_lib_files.sort()
-
-            except Exception as e:
-                self.logger.error("Error during apk decoding: {0}".format(e))
-                raise
-            else:
-                self._is_decoded = True
+        except Exception as e:
+            self.logger.error("Error during apk decoding: {0}".format(e))
+            raise
+        else:
+            self._is_decoded = True
 
     def get_remaining_fields_per_obfuscator(self) -> Union[int, List[int]]:
 
@@ -687,7 +652,11 @@ class Obfuscation(object):
             return ignore_package_list
 
         # Normalize package names into smali format.
-        for item in util.get_non_empty_lines_from_file(self.ignore_packages_file):
-            ignore_package_list.append("L{0}".format(item).replace(".", "/"))
+        ignore_package_list.extend(
+            "L{0}".format(item).replace(".", "/")
+            for item in util.get_non_empty_lines_from_file(
+                self.ignore_packages_file
+            )
+        )
 
         return ignore_package_list

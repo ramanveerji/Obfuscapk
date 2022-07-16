@@ -36,11 +36,8 @@ class Nop(obfuscator_category.ICodeObfuscator):
                         # Print original instruction.
                         out_file.write(line)
 
-                        # Check if this line contains an op code at the beginning
-                        # of the string.
-                        match = pattern.match(line)
-                        if match:
-                            op_code = match.group("op_code")
+                        if match := pattern.match(line):
+                            op_code = match["op_code"]
                             # If this is a valid op code, insert some nop instructions
                             # after it.
                             if op_code in op_codes:

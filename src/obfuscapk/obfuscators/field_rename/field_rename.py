@@ -31,8 +31,7 @@ class FieldRename(obfuscator_category.IRenameObfuscator):
         for smali_file in smali_files:
             with open(smali_file, "r", encoding="utf-8") as current_file:
                 for line in current_file:
-                    class_match = util.class_pattern.match(line)
-                    if class_match:
+                    if class_match := util.class_pattern.match(line):
                         # This is probably a SDK class, but we have its declaration so
                         # we can change the fields inside it.
                         if class_match.group("class_name").startswith(
@@ -60,8 +59,7 @@ class FieldRename(obfuscator_category.IRenameObfuscator):
                     ignore = False
 
                     if not class_name:
-                        class_match = util.class_pattern.match(line)
-                        if class_match:
+                        if class_match := util.class_pattern.match(line):
                             class_name = class_match.group("class_name")
 
                     # Field declared in class.
@@ -120,9 +118,7 @@ class FieldRename(obfuscator_category.IRenameObfuscator):
         ):
             with util.inplace_edit_file(smali_file) as (in_file, out_file):
                 for line in in_file:
-                    # Field usage.
-                    field_usage_match = util.field_usage_pattern.match(line)
-                    if field_usage_match:
+                    if field_usage_match := util.field_usage_pattern.match(line):
                         field = "{field_name}:{field_type}".format(
                             field_name=field_usage_match.group("field_name"),
                             field_type=field_usage_match.group("field_type"),

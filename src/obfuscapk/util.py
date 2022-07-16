@@ -96,16 +96,17 @@ def show_list_progress(
     unit: str = "file",
     description: str = None,
 ):
-    if not interactive:
-        return the_list
-    else:
-        return tqdm(
+    return (
+        tqdm(
             the_list,
             dynamic_ncols=True,
             unit=unit,
             desc=description,
             bar_format="{l_bar}{bar}|[{elapsed}<{remaining}, {rate_fmt}]",
         )
+        if interactive
+        else the_list
+    )
 
 
 def get_random_int(min_int: int, max_int: int) -> int:
