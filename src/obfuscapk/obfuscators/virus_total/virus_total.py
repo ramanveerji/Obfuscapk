@@ -27,8 +27,7 @@ class VirusTotal(obfuscator_category.IOtherObfuscator):
 
     def get_report_or_none(self, sha256_hash: str) -> Optional[dict]:
         try:
-            report = self.vt_session.get_json(f"/files/{sha256_hash}")
-            return report
+            return self.vt_session.get_json(f"/files/{sha256_hash}")
         except vt.error.APIError:
             return None
 

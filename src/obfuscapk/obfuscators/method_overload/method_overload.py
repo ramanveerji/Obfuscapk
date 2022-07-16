@@ -92,11 +92,8 @@ class MethodOverload(obfuscator_category.ICodeObfuscator):
                         out_file.write(overloaded_method_body)
                         new_methods_num += 1
 
-                    # Print original method.
-                    out_file.write(line)
-                else:
-                    out_file.write(line)
-
+                # Print original method.
+                out_file.write(line)
         return new_methods_num
 
     def add_method_overloads(

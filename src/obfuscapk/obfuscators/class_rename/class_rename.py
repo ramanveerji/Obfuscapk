@@ -41,15 +41,14 @@ class ClassRename(obfuscator_category.IRenameObfuscator):
     def slash_to_dot_notation_for_classes(
         self, rename_transformations: Dict[str, str]
     ) -> Dict[str, str]:
-        dot_rename_transformations: Dict[str, str] = {}
-
-        # Remove leading L and trailing ; from class names and replace / and $ with .
-        for old_name, new_name in rename_transformations.items():
-            dot_rename_transformations[
-                old_name[1:-1].replace("/", ".").replace("$", ".")
-            ] = (new_name[1:-1].replace("/", ".").replace("$", "."))
-
-        return dot_rename_transformations
+        return {
+            old_name[1:-1]
+            .replace("/", ".")
+            .replace("$", "."): (
+                new_name[1:-1].replace("/", ".").replace("$", ".")
+            )
+            for old_name, new_name in rename_transformations.items()
+        }
 
     def transform_package_name(self, manifest_xml_root: Element):
         self.encrypted_package_name = ".".join(
@@ -87,8 +86,7 @@ class ClassRename(obfuscator_category.IRenameObfuscator):
                         continue
 
                     if not class_name:
-                        class_match = util.class_pattern.match(line)
-                        if class_match:
+                        if class_match := util.class_pattern.match(line):
                             class_name = class_match.group("class_name")
 
                             ignore_class = class_name.startswith(
@@ -160,10 +158,7 @@ class ClassRename(obfuscator_category.IRenameObfuscator):
                     # this file.
                     if line.startswith(".method "):
                         skip_remaining_lines = True
-                        out_file.write(line)
-                    else:
-                        out_file.write(line)
-
+                    out_file.write(line)
         return renamed_classes
 
     def rename_class_usages_in_smali(
@@ -300,9 +295,7 @@ class ClassRename(obfuscator_category.IRenameObfuscator):
                     class_name = None
                     for line in current_file:
                         if not class_name:
-                            # Every smali file contains a class.
-                            class_match = util.class_pattern.match(line)
-                            if class_match:
+                            if class_match := util.class_pattern.match(line):
                                 self.class_name_to_smali_file[
                                     class_match.group("class_name")
                                 ] = smali_file
@@ -313,17 +306,16 @@ class ClassRename(obfuscator_category.IRenameObfuscator):
             # Write the changes into the manifest file.
             manifest_tree.write(obfuscation_info.get_manifest_file(), encoding="utf-8")
 
-            xml_files: Set[str] = set(
+            xml_files: Set[str] = {
                 os.path.join(root, file_name)
                 for root, dir_names, file_names in os.walk(
                     obfuscation_info.get_resource_directory()
                 )
                 for file_name in file_names
                 if file_name.endswith(".xml")
-                and (
-                    "layout" in root or "xml" in root
-                )  # Only res/layout-*/ and res/xml-*/ folders.
-            )
+                and ("layout" in root or "xml" in root)
+            }
+
             xml_files.add(obfuscation_info.get_manifest_file())
 
             # TODO: use the following code to rename only the classes declared in

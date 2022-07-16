@@ -40,12 +40,11 @@ class ConstStringEncryption(obfuscator_category.IEncryptionObfuscator):
             dkLen=32,
             count=128,
         )
-        encrypted_string = hexlify(
+        return hexlify(
             AES.new(key=key, mode=AES.MODE_ECB).encrypt(
                 pad(string_to_encrypt.encode(errors="replace"), AES.block_size)
             )
         ).decode()
-        return encrypted_string
 
     def obfuscate(self, obfuscation_info: Obfuscation):
         self.logger.info('Running "{0}" obfuscator'.format(self.__class__.__name__))

@@ -62,8 +62,7 @@ class LibEncryption(obfuscator_category.IEncryptionObfuscator):
                     for line_number, line in enumerate(lines):
 
                         if not class_name:
-                            class_match = util.class_pattern.match(line)
-                            if class_match:
+                            if class_match := util.class_pattern.match(line):
                                 class_name = class_match.group("class_name")
                                 continue
 
@@ -75,10 +74,9 @@ class LibEncryption(obfuscator_category.IEncryptionObfuscator):
                             # Entering static constructor.
                             editing_constructor = True
                             start_index = line_number + 1
-                            local_match = util.locals_pattern.match(
+                            if local_match := util.locals_pattern.match(
                                 lines[line_number + 1]
-                            )
-                            if local_match:
+                            ):
                                 local_count = int(local_match.group("local_count"))
                                 if local_count <= 15:
                                     # An additional register is needed for the
@@ -99,9 +97,9 @@ class LibEncryption(obfuscator_category.IEncryptionObfuscator):
                             break
 
                         elif editing_constructor:
-                            # Inside static constructor.
-                            invoke_match = native_lib_invoke_pattern.match(line)
-                            if invoke_match:
+                            if invoke_match := native_lib_invoke_pattern.match(
+                                line
+                            ):
                                 # Native library load instruction. Iterate the
                                 # constructor lines backwards in order to find the
                                 # string containing the name of the loaded library.
@@ -109,9 +107,11 @@ class LibEncryption(obfuscator_category.IEncryptionObfuscator):
                                     string_match = util.const_string_pattern.match(
                                         lines[l_num]
                                     )
-                                    if string_match and string_match.group(
-                                        "register"
-                                    ) == invoke_match.group("invoke_pass"):
+                                    if (
+                                        string_match
+                                        and string_match.group("register")
+                                        == invoke_match["invoke_pass"]
+                                    ):
                                         # Native library string declaration.
                                         lib_names.append(string_match.group("string"))
 
@@ -126,12 +126,13 @@ class LibEncryption(obfuscator_category.IEncryptionObfuscator):
                                     "loadEncryptedLibrary("
                                     "Ljava/lang/Class;Ljava/lang/String;)V\n".format(
                                         class_name=class_name,
-                                        original_register=invoke_match.group(
+                                        original_register=invoke_match[
                                             "invoke_pass"
-                                        ),
+                                        ],
                                         class_register_num=local_count - 1,
                                     )
                                 )
+
 
                         # Encrypt the native libraries used in code and put them
                         # in assets folder.

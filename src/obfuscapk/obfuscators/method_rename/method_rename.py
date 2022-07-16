@@ -123,9 +123,7 @@ class MethodRename(obfuscator_category.IRenameObfuscator):
         ):
             with util.inplace_edit_file(smali_file) as (in_file, out_file):
                 for line in in_file:
-                    # Method invocation.
-                    invoke_match = util.invoke_pattern.match(line)
-                    if invoke_match:
+                    if invoke_match := util.invoke_pattern.match(line):
                         method = (
                             "{class_name}->"
                             "{method_name}({method_param}){method_return}".format(
